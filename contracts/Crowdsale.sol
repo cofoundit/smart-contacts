@@ -220,7 +220,7 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
     pendingEthWithdrawal = this.balance;
   }
   uint pendingEthWithdrawal;
-  function sanityCheck(){
+  function pullBalance(){
     require(msg.sender == multisigAddress);
     require(pendingEthWithdrawal > 0);
 
