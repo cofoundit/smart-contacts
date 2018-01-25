@@ -9,3 +9,4 @@ migrations/
 node_modules/
 test/
 Migrations.sol
+truffle.js
