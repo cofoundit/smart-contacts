@@ -51,6 +51,7 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   bool ownerHasClaimedTokens;
   uint cofounditReward;
   address cofounditAddress;
+  address cofounditColdStorage;
   bool cofounditHasClaimedTokens;
 
   //
@@ -159,8 +160,8 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
     uint contributionAmount = _amount;
     uint returnAmount = 0;
     if (maxContribution < _amount){                                             // Check if max contribution is lower than _amount sent
-      contributionAmount = maxContribution;                                     // Set that user contibutes his maximum alowed contribution
-      returnAmount = _amount - maxContribution;                                 // Calculate howmuch he must get back
+      contributionAmount = maxContribution;                                     // Set that user contributes his maximum allowed contribution
+      returnAmount = _amount - maxContribution;                                 // Calculate how much he must get back
     }
 
     if (ethRaised + contributionAmount > minCap && minCap > ethRaised) MinCapReached(block.number);
@@ -185,7 +186,7 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   }
 
   //
-  // Push contributor data to the contract before the crowdsale so that they are eligible for priorit pass
+  // Push contributor data to the contract before the crowdsale so that they are eligible for priority pass
   //
   function editContributors(address[] _contributorAddresses, uint[] _contributorPPAllowances) onlyOwner{
     require(_contributorAddresses.length == _contributorPPAllowances.length); // Check if input data is correct
@@ -204,7 +205,7 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   }
 
   //
-  // Method is needed for recovering tokens accedentaly sent to token address
+  // Method is needed for recovering tokens accidentally sent to token address
   //
   function salvageTokensFromContract(address _tokenAddress, address _to, uint _amount) onlyOwner{
     IERC20Token(_tokenAddress).transfer(_to, _amount);
@@ -265,7 +266,7 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   }
 
   //
-  // If there were any issue/attach with refund owner can withraw eth at the end for manual recovery
+  // If there were any issue/attach with refund owner can withdraw eth at the end for manual recovery
   //
   function withdrawRemainingBalanceForManualRecovery() onlyOwner{
     require(this.balance != 0);                                  // Check if there are any eth to claim
@@ -293,7 +294,7 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   //
   function claimCoreTeamsTokens(address _to) onlyOwner{
     require(crowdsaleState == state.crowdsaleEnded);              // Check if crowdsale has ended
-    require(!ownerHasClaimedTokens);                              // Check if owner has allready claimed tokens
+    require(!ownerHasClaimedTokens);                              // Check if owner has already claimed tokens
 
     uint devReward = maxTokenSupply - token.totalSupply();
     if (!cofounditHasClaimedTokens) devReward -= cofounditReward; // If cofoundit has claimed tokens its ok if not set aside cofounditReward
@@ -304,16 +305,34 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   //
   // Cofoundit can claim their tokens
   //
-  function claimCofounditTokens(address _to){
+  function claimCofounditTokens(){
     require(msg.sender == cofounditAddress);            // Check if sender is cofoundit
     require(crowdsaleState == state.crowdsaleEnded);    // Check if crowdsale has ended
-    require(!cofounditHasClaimedTokens);                // Check if cofoundit has allready claimed tokens
+    require(!cofounditHasClaimedTokens);                // Check if cofoundit has already claimed tokens
 
-    token.mintTokens(_to, cofounditReward);             // Issue cofoundit tokens
+    token.mintTokens(cofounditColdStorage, cofounditReward);             // Issue cofoundit tokens
     cofounditHasClaimedTokens = true;                   // Block further mints from this method
   }
 
   function getTokenAddress() constant returns(address){
     return address(token);
+  }
+
+  //
+  //  Before crowdsale starts owner can calibrate blocks of crowdsale stages
+  //
+  function setCrowdsaleBlocks(uint _presaleStartBlock, uint _presaleUnlimitedStartBlock, uint _crowdsaleStartBlock, uint _crowdsaleEndedBlock) onlyOwner{
+    require(crowdsaleState == state.pendingStart);                // Check if crowdsale has started
+    require(_presaleStartBlock != 0);                             // Check if any value is 0
+    require(_presaleStartBlock < _presaleUnlimitedStartBlock);    // Check if presaleUnlimitedStartBlock is set properly
+    require(_presaleUnlimitedStartBlock != 0);                    // Check if any value is 0
+    require(_presaleUnlimitedStartBlock < _crowdsaleStartBlock);  // Check if crowdsaleStartBlock is set properly
+    require(_crowdsaleStartBlock != 0);                           // Check if any value is 0
+    require(_crowdsaleStartBlock < _crowdsaleEndedBlock);         // Check if crowdsaleEndedBlock is set properly
+    require(_crowdsaleEndedBlock != 0);                           // Check if any value is 0
+    presaleStartBlock = _presaleStartBlock;
+    presaleUnlimitedStartBlock = _presaleUnlimitedStartBlock;
+    crowdsaleStartBlock = _crowdsaleStartBlock;
+    crowdsaleEndedBlock = _crowdsaleEndedBlock;
   }
 }

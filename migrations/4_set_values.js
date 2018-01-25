@@ -1,11 +1,6 @@
-var Crowdsale = artifacts.require("./Crowdsale.sol");   //For testing use this .sol
-var Token = artifacts.require("./Token.sol");           // For testing use this .sol
+var Crowdsale = artifacts.require("../ForTesting/Crowdsale.sol");   //For testing use this .sol
+var Token = artifacts.require("../ForTesting/Token.sol");           // For testing use this .sol
 var SafeMathLib = artifacts.require("./Utils/SafeMath.sol");
-
-function set_whitelist(contract){
-
-	crowdsaleContract.editContributors();
-}
 
 module.exports = function(deployer) {
 
@@ -15,7 +10,6 @@ module.exports = function(deployer) {
     tokenContract = _tokenInstance;
   return Crowdsale.deployed().then(function(_crowdsaleInstance) {
     crowdsaleContract = _crowdsaleInstance;
-    set_whitelist(crowdsaleContract);
   return crowdsaleContract.setToken(tokenContract.address);
   });
   });

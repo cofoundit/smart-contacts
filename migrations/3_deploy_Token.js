@@ -1,5 +1,5 @@
-var Crowdsale = artifacts.require("./Crowdsale.sol");   //For testing use this .sol
-var Token = artifacts.require("./Token.sol");           // For testing use this .sol
+var Crowdsale = artifacts.require("../ForTesting/Crowdsale.sol");   //For testing use this .sol
+var Token = artifacts.require("../ForTesting/Token.sol");           // For testing use this .sol
 var SafeMathLib = artifacts.require("./Utils/SafeMath.sol");
 
 module.exports = function(deployer) {

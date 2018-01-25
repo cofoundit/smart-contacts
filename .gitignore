@@ -2,7 +2,10 @@ build/
 abi.json
 gist/
 pass.txt
-scripts
-test/CrowdsaleDirtyTest.js
 .idea/
 .DS_Store/
+ForTesting/
+migrations/
+node_modules/
+test/
+Migrations.sol
