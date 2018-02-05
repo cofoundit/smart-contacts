@@ -1,0 +1,12 @@
+build/
+abi.json
+gist/
+pass.txt
+.idea/
+.DS_Store/
+ForTesting/
+migrations/
+node_modules/
+tests/
+Migrations.sol
+truffle.js

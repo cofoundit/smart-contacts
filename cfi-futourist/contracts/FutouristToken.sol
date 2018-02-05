@@ -2,12 +2,12 @@ pragma solidity ^0.4.13;
 
 import "./Token.sol";
 
-contract CFIToken is Token {
+contract FutouristToken is Token {
 
   /* Initializes contract */
-  function CFIToken(address _crowdsaleAddress, uint _tokenStartBlock) {
+  function FutouristToken(address _crowdsaleAddress, uint _tokenStartBlock) {
     standard = " v1.0"; // Set token standard
-    name = ""; // Set token name
+    name = "FutouristToken"; // Set token name
     symbol = ""; //TODO: set token symbol
     decimals = 18;
     crowdsaleContractAddress = _crowdsaleAddress;

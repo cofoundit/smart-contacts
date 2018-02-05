@@ -2,8 +2,8 @@ pragma solidity ^0.4.13;
 
 import "./Crowdsale.sol";
 
-contract CFICrowdsale is Crowdsale {
-  function CFICrowdsale(){
+contract FutouristCrowdsale is Crowdsale {
+  function FutouristCrowdsale(){
     presaleStartBlock; //TODO: set block
     presaleUnlimitedStartBlock; //TODO: set block
     crowdsaleStartBlock; //TODO: set block
@@ -16,8 +16,8 @@ contract CFICrowdsale is Crowdsale {
     ethToTokenConversion; //TODO: set conversion
 
     maxTokenSupply; //TODO: set supply
-    cofounditReward; //TODO: set Cofound.it reward
-    cofounditAddress; // TODO: set the CFI addres
-    cofounditColdStorage; // TODO: set the cold storage address
+    presaleBonusTokens; //TODO: set number of tokens set for the presale bonuses
+    presaleBonusAddress; // TODO: set the address for the presale bonuses tokens
+    presaleBonusAddressColdStorage; // TODO: set the cold storage address for the presale bonuses tokens
   }
 }
