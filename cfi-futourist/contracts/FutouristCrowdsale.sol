@@ -14,10 +14,10 @@ contract FutouristCrowdsale is Crowdsale {
     maxCap = 5226 ether;
     maxP1Cap = 5226 ether;
 
-    ethToTokenConversion = 45938; //TODO: set conversion
+    ethToTokenConversion = 45938;
 
-    maxTokenSupply = 1000000000 ether; //TODO: set supply
-    presaleBonusTokens = 109929634 ether; //TODO: set number of tokens set for the presale bonuses
+    maxTokenSupply = 1000000000 ether;
+    presaleBonusTokens = 109929634 ether;
     presaleBonusAddress; // TODO: set the address for the presale bonuses tokens
     presaleBonusAddressColdStorage; // TODO: set the cold storage address for the presale bonuses tokens
     /* /ADAPT */
