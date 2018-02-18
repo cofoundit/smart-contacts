@@ -21,18 +21,18 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   state public crowdsaleState = state.pendingStart;
   enum state { pendingStart, priorityPass, openedPriorityPass, crowdsale, crowdsaleEnded }
 
-  uint public presaleStartBlock;
-  uint public presaleUnlimitedStartBlock;
-  uint public crowdsaleStartBlock;
-  uint public crowdsaleEndedBlock;
+  uint public presaleStartTime;
+  uint public presaleUnlimitedStartTime;
+  uint public crowdsaleStartTime;
+  uint public crowdsaleEndedTime;
 
-  event PresaleStarted(uint blockNumber);
-  event PresaleUnlimitedStarted(uint blockNumber);
-  event CrowdsaleStarted(uint blockNumber);
-  event CrowdsaleEnded(uint blockNumber);
+  event PresaleStarted(uint blockTime);
+  event PresaleUnlimitedStarted(uint blockTime);
+  event CrowdsaleStarted(uint blockTime);
+  event CrowdsaleEnded(uint blockTime);
   event ErrorSendingETH(address to, uint amount);
-  event MinCapReached(uint blockNumber);
-  event MaxCapReached(uint blockNumber);
+  event MinCapReached(uint blockTime);
+  event MaxCapReached(uint blockTime);
 
   IToken token = IToken(0x0);
   uint ethToTokenConversion;
@@ -91,33 +91,33 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   function checkCrowdsaleState() internal returns (bool){
     if (ethRaised == maxCap && crowdsaleState != state.crowdsaleEnded){                         // Check if max cap is reached
       crowdsaleState = state.crowdsaleEnded;
-      MaxCapReached(block.number);                                                              // Close the crowdsale
-      CrowdsaleEnded(block.number);                                                             // Raise event
+      MaxCapReached(block.timestamp);                                                              // Close the crowdsale
+      CrowdsaleEnded(block.timestamp);                                                             // Raise event
       return true;
     }
 
-    if (block.number > presaleStartBlock && block.number <= presaleUnlimitedStartBlock){  // Check if we are in presale phase
+    if (block.timestamp > presaleStartTime && block.timestamp <= presaleUnlimitedStartTime){  // Check if we are in presale phase
       if (crowdsaleState != state.priorityPass){                                          // Check if state needs to be changed
         crowdsaleState = state.priorityPass;                                              // Set new state
-        PresaleStarted(block.number);                                                     // Raise event
+        PresaleStarted(block.timestamp);                                                     // Raise event
         return true;
       }
-    }else if(block.number > presaleUnlimitedStartBlock && block.number <= crowdsaleStartBlock){ // Check if we are in presale unlimited phase
+    }else if(block.timestamp > presaleUnlimitedStartTime && block.timestamp <= crowdsaleStartTime){ // Check if we are in presale unlimited phase
       if (crowdsaleState != state.openedPriorityPass){                                          // Check if state needs to be changed
         crowdsaleState = state.openedPriorityPass;                                              // Set new state
-        PresaleUnlimitedStarted(block.number);                                                  // Raise event
+        PresaleUnlimitedStarted(block.timestamp);                                                  // Raise event
         return true;
       }
-    }else if(block.number > crowdsaleStartBlock && block.number <= crowdsaleEndedBlock){        // Check if we are in crowdsale state
+    }else if(block.timestamp > crowdsaleStartTime && block.timestamp <= crowdsaleEndedTime){        // Check if we are in crowdsale state
       if (crowdsaleState != state.crowdsale){                                                   // Check if state needs to be changed
         crowdsaleState = state.crowdsale;                                                       // Set new state
-        CrowdsaleStarted(block.number);                                                         // Raise event
+        CrowdsaleStarted(block.timestamp);                                                         // Raise event
         return true;
       }
     }else{
-      if (crowdsaleState != state.crowdsaleEnded && block.number > crowdsaleEndedBlock){        // Check if crowdsale is over
+      if (crowdsaleState != state.crowdsaleEnded && block.timestamp > crowdsaleEndedTime){        // Check if crowdsale is over
         crowdsaleState = state.crowdsaleEnded;                                                  // Set new state
-        CrowdsaleEnded(block.number);                                                           // Raise event
+        CrowdsaleEnded(block.timestamp);                                                           // Raise event
         return true;
       }
     }
@@ -164,7 +164,7 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
       returnAmount = _amount - maxContribution;                                 // Calculate how much he must get back
     }
 
-    if (ethRaised + contributionAmount > minCap && minCap > ethRaised) MinCapReached(block.number);
+    if (ethRaised + contributionAmount > minCap && minCap > ethRaised) MinCapReached(block.timestamp);
 
     if (contributorList[_contributor].isActive == false){                       // Check if contributor has already contributed
       contributorList[_contributor].isActive = true;                            // Set his activity to true
@@ -233,8 +233,8 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   // Users can claim their contribution if min cap is not raised
   //
   function claimEthIfFailed(){
-    require(block.number > crowdsaleEndedBlock && ethRaised < minCap);    // Check if crowdsale has failed
-    require(contributorList[msg.sender].contributionAmount > 0);          // Check if contributor has contributed to crowdsaleEndedBlock
+    require(block.timestamp > crowdsaleEndedTime && ethRaised < minCap);    // Check if crowdsale has failed
+    require(contributorList[msg.sender].contributionAmount > 0);          // Check if contributor has contributed to crowdsaleEndedTime
     require(!hasClaimedEthWhenFail[msg.sender]);                          // Check if contributor has already claimed his eth
 
     uint ethContributed = contributorList[msg.sender].contributionAmount; // Get contributors contribution
@@ -248,7 +248,7 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   // Owner can batch return contributors contributions(eth)
   //
   function batchReturnEthIfFailed(uint _numberOfReturns) onlyOwner{
-    require(block.number > crowdsaleEndedBlock && ethRaised < minCap);                // Check if crowdsale has failed
+    require(block.timestamp > crowdsaleEndedTime && ethRaised < minCap);                // Check if crowdsale has failed
     address currentParticipantAddress;
     uint contribution;
     for (uint cnt = 0; cnt < _numberOfReturns; cnt++){
@@ -270,7 +270,7 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   //
   function withdrawRemainingBalanceForManualRecovery() onlyOwner{
     require(this.balance != 0);                                  // Check if there are any eth to claim
-    require(block.number > crowdsaleEndedBlock);                 // Check if crowdsale is over
+    require(block.timestamp > crowdsaleEndedTime);                 // Check if crowdsale is over
     require(contributorIndexes[nextContributorToClaim] == 0x0);  // Check if all the users were refunded
     multisigAddress.transfer(this.balance);                      // Withdraw to multisig
   }
@@ -318,21 +318,4 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
     return address(token);
   }
 
-  //
-  //  Before crowdsale starts owner can calibrate blocks of crowdsale stages
-  //
-  function setCrowdsaleBlocks(uint _presaleStartBlock, uint _presaleUnlimitedStartBlock, uint _crowdsaleStartBlock, uint _crowdsaleEndedBlock) onlyOwner{
-    require(crowdsaleState == state.pendingStart);                // Check if crowdsale has started
-    require(_presaleStartBlock != 0);                             // Check if any value is 0
-    require(_presaleStartBlock < _presaleUnlimitedStartBlock);    // Check if presaleUnlimitedStartBlock is set properly
-    require(_presaleUnlimitedStartBlock != 0);                    // Check if any value is 0
-    require(_presaleUnlimitedStartBlock < _crowdsaleStartBlock);  // Check if crowdsaleStartBlock is set properly
-    require(_crowdsaleStartBlock != 0);                           // Check if any value is 0
-    require(_crowdsaleStartBlock < _crowdsaleEndedBlock);         // Check if crowdsaleEndedBlock is set properly
-    require(_crowdsaleEndedBlock != 0);                           // Check if any value is 0
-    presaleStartBlock = _presaleStartBlock;
-    presaleUnlimitedStartBlock = _presaleUnlimitedStartBlock;
-    crowdsaleStartBlock = _crowdsaleStartBlock;
-    crowdsaleEndedBlock = _crowdsaleEndedBlock;
-  }
 }
