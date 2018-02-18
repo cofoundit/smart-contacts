@@ -217,16 +217,8 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   function withdrawEth() onlyOwner{
     require(this.balance != 0);
     require(ethRaised >= minCap);
-
-    pendingEthWithdrawal = this.balance;
-  }
-  uint pendingEthWithdrawal;
-  function pullBalance(){
-    require(msg.sender == multisigAddress);
-    require(pendingEthWithdrawal > 0);
-
-    multisigAddress.transfer(pendingEthWithdrawal);
-    pendingEthWithdrawal = 0;
+  
+    multisigAddress.transfer(this.balance);
   }
 
   //
