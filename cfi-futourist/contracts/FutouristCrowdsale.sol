@@ -18,8 +18,8 @@ contract FutouristCrowdsale is Crowdsale {
 
     maxTokenSupply = 1000000000 ether;
     presaleBonusTokens = 109929634 ether;
-    presaleBonusAddress; // TODO: set the address for the presale bonuses tokens
-    presaleBonusAddressColdStorage; // TODO: set the cold storage address for the presale bonuses tokens
+    presaleBonusAddress = 0x0; // it' going to be Nino' owner
+    presaleBonusAddressColdStorage = 0x47D634Ce50170a156ec4300d35BE3b48E17CAaf6;
     /* /ADAPT */
   }
 }
