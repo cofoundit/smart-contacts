@@ -2,11 +2,10 @@ pragma solidity ^0.4.13;
 
 import "./Interfaces/ITokenRecipient.sol";
 import "./Interfaces/IERC20Token.sol";
-import "./Utils/Owned.sol";
 import "./Utils/SafeMath.sol";
-import "./Utils/Lockable.sol";
+import "./Utils/LockableOwned.sol";
 
-contract Token is IERC20Token, Owned, Lockable{
+contract Token is IERC20Token, LockableOwned {
 
   using SafeMath for uint256;
 
