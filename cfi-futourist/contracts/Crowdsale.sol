@@ -15,8 +15,8 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   }
 
   mapping(address => ContributorData) public contributorList;
-  uint nextContributorIndex;
-  mapping(uint => address) contributorIndexes;
+  uint public nextContributorIndex;
+  mapping(uint => address) public contributorIndexes;
 
   state public crowdsaleState = state.pendingStart;
   enum state { pendingStart, priorityPass, openedPriorityPass, crowdsale, crowdsaleEnded }
@@ -33,6 +33,8 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   event ErrorSendingETH(address to, uint amount);
   event MinCapReached(uint blockTime);
   event MaxCapReached(uint blockTime);
+  event ContributionMade(address indexed contributor, uint amount);
+
 
   IToken token = IToken(0x0);
   uint ethToTokenConversion;
@@ -47,17 +49,18 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   uint nextContributorToClaim;
   mapping(address => bool) hasClaimedEthWhenFail;
 
-  uint maxTokenSupply;
-  bool ownerHasClaimedTokens;
-  uint presaleBonusTokens;
-  address presaleBonusAddress;
-  address presaleBonusAddressColdStorage;
-  bool presaleBonusTokensClaimed;
+  uint public maxTokenSupply;
+  bool public ownerHasClaimedTokens;
+  uint public presaleBonusTokens;
+  address public presaleBonusAddress;
+  address public presaleBonusAddressColdStorage;
+  bool public presaleBonusTokensClaimed;
 
   //
   // Unnamed function that runs when eth is sent to the contract
+  // @payable
   //
-  function() noReentrancy payable{
+  function() public noReentrancy payable{
     require(msg.value != 0);                        // Throw if value is 0
     require(crowdsaleState != state.crowdsaleEnded);// Check if crowdsale has ended
 
@@ -177,6 +180,8 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
     }
     ethRaised += contributionAmount;                                            // Add to eth raised
 
+    ContributionMade(msg.sender, contributionAmount);
+
     uint tokenAmount = contributionAmount * ethToTokenConversion;               // Calculate how much tokens must contributor get
     if (tokenAmount > 0){
       token.mintTokens(_contributor, tokenAmount);                                // Issue new tokens
@@ -188,7 +193,7 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   //
   // Push contributor data to the contract before the crowdsale so that they are eligible for priority pass
   //
-  function editContributors(address[] _contributorAddresses, uint[] _contributorPPAllowances) onlyOwner{
+  function editContributors(address[] _contributorAddresses, uint[] _contributorPPAllowances) public onlyOwner{
     require(_contributorAddresses.length == _contributorPPAllowances.length); // Check if input data is correct
 
     for(uint cnt = 0; cnt < _contributorAddresses.length; cnt++){
@@ -207,24 +212,40 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   //
   // Method is needed for recovering tokens accidentally sent to token address
   //
-  function salvageTokensFromContract(address _tokenAddress, address _to, uint _amount) onlyOwner{
+  function salvageTokensFromContract(address _tokenAddress, address _to, uint _amount) public onlyOwner{
     IERC20Token(_tokenAddress).transfer(_to, _amount);
   }
 
   //
   // withdrawEth when minimum cap is reached
+  // @owner sets contributions to withdraw
   //
-  function withdrawEth() onlyOwner{
+  function withdrawEth() onlyOwner public {
     require(this.balance != 0);
     require(ethRaised >= minCap);
-  
-    multisigAddress.transfer(this.balance);
+
+    pendingEthWithdrawal = this.balance;
+  }
+
+
+  uint public pendingEthWithdrawal;
+  //
+  // pulls the funds that were set to send with calling of
+  // withdrawEth when minimum cap is reached
+  // @multisig pulls the contributions to self
+  //
+  function pullBalance() public {
+    require(msg.sender == multisigAddress);
+    require(pendingEthWithdrawal > 0);
+
+    multisigAddress.transfer(pendingEthWithdrawal);
+    pendingEthWithdrawal = 0;
   }
 
   //
   // Users can claim their contribution if min cap is not raised
   //
-  function claimEthIfFailed(){
+  function claimEthIfFailed() public {
     require(block.timestamp > crowdsaleEndedTime && ethRaised < minCap);    // Check if crowdsale has failed
     require(contributorList[msg.sender].contributionAmount > 0);          // Check if contributor has contributed to crowdsaleEndedTime
     require(!hasClaimedEthWhenFail[msg.sender]);                          // Check if contributor has already claimed his eth
@@ -239,7 +260,7 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   //
   // Owner can batch return contributors contributions(eth)
   //
-  function batchReturnEthIfFailed(uint _numberOfReturns) onlyOwner{
+  function batchReturnEthIfFailed(uint _numberOfReturns) public onlyOwner{
     require(block.timestamp > crowdsaleEndedTime && ethRaised < minCap);                // Check if crowdsale has failed
     address currentParticipantAddress;
     uint contribution;
@@ -260,7 +281,7 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   //
   // If there were any issue/attach with refund owner can withdraw eth at the end for manual recovery
   //
-  function withdrawRemainingBalanceForManualRecovery() onlyOwner{
+  function withdrawRemainingBalanceForManualRecovery() public onlyOwner{
     require(this.balance != 0);                                  // Check if there are any eth to claim
     require(block.timestamp > crowdsaleEndedTime);                 // Check if crowdsale is over
     require(contributorIndexes[nextContributorToClaim] == 0x0);  // Check if all the users were refunded
@@ -270,21 +291,21 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   //
   // Owner can set multisig address for crowdsale
   //
-  function setMultisigAddress(address _newAddress) onlyOwner{
+  function setMultisigAddress(address _newAddress) public onlyOwner{
     multisigAddress = _newAddress;
   }
 
   //
   // Owner can set token address where mints will happen
   //
-  function setToken(address _newAddress) onlyOwner{
+  function setToken(address _newAddress) public onlyOwner{
     token = IToken(_newAddress);
   }
 
   //
   // Owner can claim teams tokens when crowdsale has successfully ended
   //
-  function claimCoreTeamsTokens(address _to) onlyOwner{
+  function claimCoreTeamsTokens(address _to) public onlyOwner{
     require(crowdsaleState == state.crowdsaleEnded);              // Check if crowdsale has ended
     require(!ownerHasClaimedTokens);                              // Check if owner has already claimed tokens
 
@@ -297,7 +318,7 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   //
   // Presale bonus tokens
   //
-  function claimPresaleTokens(){
+  function claimPresaleTokens() public {
     require(msg.sender == presaleBonusAddress);         // Check if sender is address to claim tokens
     require(crowdsaleState == state.crowdsaleEnded);    // Check if crowdsale has ended
     require(!presaleBonusTokensClaimed);                // Check if tokens were already claimed
@@ -306,7 +327,7 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
     presaleBonusTokensClaimed = true;                   // Block further mints from this method
   }
 
-  function getTokenAddress() constant returns(address){
+  function getTokenAddress() public constant returns(address){
     return address(token);
   }
 
