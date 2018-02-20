@@ -35,7 +35,7 @@ contract FutouristCrowdsale is Crowdsale {
     ethToTokenConversion = 47000;
 
     maxTokenSupply = 1000000000 * 10**18;
-    presaleBonusTokens = 109929634  * 10**18;
+    presaleBonusTokens = 115996000  * 10**18;
     presaleBonusAddress = 0xd7C4af0e30EC62a01036e45b6ed37BC6D0a3bd53;
     presaleBonusAddressColdStorage = 0x47D634Ce50170a156ec4300d35BE3b48E17CAaf6;
     /* /ADAPT */
