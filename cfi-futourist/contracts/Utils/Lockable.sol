@@ -1,26 +1,26 @@
 pragma solidity ^0.4.13;
 
-import "../Utils/Owned.sol";
+import "./Utils/Owned.sol";
 
-contract Lockable is Owned{
+contract LockableOwned is Owned{
 
-  uint256 public lockedUntilBlock;
+  uint256 public lockedUntilTime;
 
-  event ContractLocked(uint256 _untilBlock, string _reason);
+  event ContractLocked(uint256 _untilTime, string _reason);
 
   modifier lockAffected {
-      require(block.number > lockedUntilBlock);
+      require(block.timestamp > lockedUntilTime);
       _;
   }
 
-  function lockFromSelf(uint256 _untilBlock, string _reason) internal {
-    lockedUntilBlock = _untilBlock;
-    ContractLocked(_untilBlock, _reason);
+  function lockFromSelf(uint256 _untilTime, string _reason) internal {
+    lockedUntilTime = _untilTime;
+    ContractLocked(_untilTime, _reason);
   }
 
 
-  function lockUntil(uint256 _untilBlock, string _reason) onlyOwner {
-    lockedUntilBlock = _untilBlock;
-    ContractLocked(_untilBlock, _reason);
+  function lockUntil(uint256 _untilTime, string _reason) onlyOwner {
+    lockedUntilTime = _untilTime;
+    ContractLocked(_untilTime, _reason);
   }
 }
