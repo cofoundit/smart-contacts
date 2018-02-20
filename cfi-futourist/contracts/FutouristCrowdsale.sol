@@ -24,7 +24,7 @@ contract FutouristCrowdsale is Crowdsale {
   function FutouristCrowdsale() public {
     /* ADAPT */
     presaleStartTime = 1519142400; //20/2/2017/1700
-    presaleUnlimitedStartTime = 1519315200; //23/2/2017/1700
+    presaleUnlimitedStartTime = 1519315200; //22/2/2017/1700
     crowdsaleStartTime = 1519747200; //27/2/2017/1700
     crowdsaleEndedTime = 1521561600; //20/3/2017/1700
 
