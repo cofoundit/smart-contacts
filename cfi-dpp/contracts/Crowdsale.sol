@@ -15,24 +15,26 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   }
 
   mapping(address => ContributorData) public contributorList;
-  uint nextContributorIndex;
-  mapping(uint => address) contributorIndexes;
+  uint public nextContributorIndex;
+  mapping(uint => address) public contributorIndexes;
 
   state public crowdsaleState = state.pendingStart;
   enum state { pendingStart, priorityPass, openedPriorityPass, crowdsale, crowdsaleEnded }
 
-  uint public presaleStartBlock;
-  uint public presaleUnlimitedStartBlock;
-  uint public crowdsaleStartBlock;
-  uint public crowdsaleEndedBlock;
+  uint public presaleStartTime;
+  uint public presaleUnlimitedStartTime;
+  uint public crowdsaleStartTime;
+  uint public crowdsaleEndedTime;
 
-  event PresaleStarted(uint blockNumber);
-  event PresaleUnlimitedStarted(uint blockNumber);
-  event CrowdsaleStarted(uint blockNumber);
-  event CrowdsaleEnded(uint blockNumber);
+  event PresaleStarted(uint blockTime);
+  event PresaleUnlimitedStarted(uint blockTime);
+  event CrowdsaleStarted(uint blockTime);
+  event CrowdsaleEnded(uint blockTime);
   event ErrorSendingETH(address to, uint amount);
-  event MinCapReached(uint blockNumber);
-  event MaxCapReached(uint blockNumber);
+  event MinCapReached(uint blockTime);
+  event MaxCapReached(uint blockTime);
+  event ContributionMade(address indexed contributor, uint amount);
+
 
   IToken token = IToken(0x0);
   uint ethToTokenConversion;
@@ -47,17 +49,18 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   uint nextContributorToClaim;
   mapping(address => bool) hasClaimedEthWhenFail;
 
-  uint maxTokenSupply;
-  bool ownerHasClaimedTokens;
-  uint cofounditReward;
-  address cofounditAddress;
-  address cofounditColdStorage;
-  bool cofounditHasClaimedTokens;
+  uint public maxTokenSupply;
+  bool public ownerHasClaimedTokens;
+  uint public presaleBonusTokens;
+  address public presaleBonusAddress;
+  address public presaleBonusAddressColdStorage;
+  bool public presaleBonusTokensClaimed;
 
   //
   // Unnamed function that runs when eth is sent to the contract
+  // @payable
   //
-  function() noReentrancy payable{
+  function() public noReentrancy payable{
     require(msg.value != 0);                        // Throw if value is 0
     require(crowdsaleState != state.crowdsaleEnded);// Check if crowdsale has ended
 
@@ -91,33 +94,33 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   function checkCrowdsaleState() internal returns (bool){
     if (ethRaised == maxCap && crowdsaleState != state.crowdsaleEnded){                         // Check if max cap is reached
       crowdsaleState = state.crowdsaleEnded;
-      MaxCapReached(block.number);                                                              // Close the crowdsale
-      CrowdsaleEnded(block.number);                                                             // Raise event
+      MaxCapReached(block.timestamp);                                                              // Close the crowdsale
+      CrowdsaleEnded(block.timestamp);                                                             // Raise event
       return true;
     }
 
-    if (block.number > presaleStartBlock && block.number <= presaleUnlimitedStartBlock){  // Check if we are in presale phase
+    if (block.timestamp > presaleStartTime && block.timestamp <= presaleUnlimitedStartTime){  // Check if we are in presale phase
       if (crowdsaleState != state.priorityPass){                                          // Check if state needs to be changed
         crowdsaleState = state.priorityPass;                                              // Set new state
-        PresaleStarted(block.number);                                                     // Raise event
+        PresaleStarted(block.timestamp);                                                     // Raise event
         return true;
       }
-    }else if(block.number > presaleUnlimitedStartBlock && block.number <= crowdsaleStartBlock){ // Check if we are in presale unlimited phase
+    }else if(block.timestamp > presaleUnlimitedStartTime && block.timestamp <= crowdsaleStartTime){ // Check if we are in presale unlimited phase
       if (crowdsaleState != state.openedPriorityPass){                                          // Check if state needs to be changed
         crowdsaleState = state.openedPriorityPass;                                              // Set new state
-        PresaleUnlimitedStarted(block.number);                                                  // Raise event
+        PresaleUnlimitedStarted(block.timestamp);                                                  // Raise event
         return true;
       }
-    }else if(block.number > crowdsaleStartBlock && block.number <= crowdsaleEndedBlock){        // Check if we are in crowdsale state
+    }else if(block.timestamp > crowdsaleStartTime && block.timestamp <= crowdsaleEndedTime){        // Check if we are in crowdsale state
       if (crowdsaleState != state.crowdsale){                                                   // Check if state needs to be changed
         crowdsaleState = state.crowdsale;                                                       // Set new state
-        CrowdsaleStarted(block.number);                                                         // Raise event
+        CrowdsaleStarted(block.timestamp);                                                         // Raise event
         return true;
       }
     }else{
-      if (crowdsaleState != state.crowdsaleEnded && block.number > crowdsaleEndedBlock){        // Check if crowdsale is over
+      if (crowdsaleState != state.crowdsaleEnded && block.timestamp > crowdsaleEndedTime){        // Check if crowdsale is over
         crowdsaleState = state.crowdsaleEnded;                                                  // Set new state
-        CrowdsaleEnded(block.number);                                                           // Raise event
+        CrowdsaleEnded(block.timestamp);                                                           // Raise event
         return true;
       }
     }
@@ -160,11 +163,11 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
     uint contributionAmount = _amount;
     uint returnAmount = 0;
     if (maxContribution < _amount){                                             // Check if max contribution is lower than _amount sent
-      contributionAmount = maxContribution;                                     // Set that user contibutes his maximum alowed contribution
-      returnAmount = _amount - maxContribution;                                 // Calculate howmuch he must get back
+      contributionAmount = maxContribution;                                     // Set that user contributes his maximum allowed contribution
+      returnAmount = _amount - maxContribution;                                 // Calculate how much he must get back
     }
 
-    if (ethRaised + contributionAmount > minCap && minCap > ethRaised) MinCapReached(block.number);
+    if (ethRaised + contributionAmount > minCap && minCap > ethRaised) MinCapReached(block.timestamp);
 
     if (contributorList[_contributor].isActive == false){                       // Check if contributor has already contributed
       contributorList[_contributor].isActive = true;                            // Set his activity to true
@@ -177,6 +180,8 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
     }
     ethRaised += contributionAmount;                                            // Add to eth raised
 
+    ContributionMade(msg.sender, contributionAmount);
+
     uint tokenAmount = contributionAmount * ethToTokenConversion;               // Calculate how much tokens must contributor get
     if (tokenAmount > 0){
       token.mintTokens(_contributor, tokenAmount);                                // Issue new tokens
@@ -186,9 +191,9 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   }
 
   //
-  // Push contributor data to the contract before the crowdsale so that they are eligible for priorit pass
+  // Push contributor data to the contract before the crowdsale so that they are eligible for priority pass
   //
-  function editContributors(address[] _contributorAddresses, uint[] _contributorPPAllowances) onlyOwner{
+  function editContributors(address[] _contributorAddresses, uint[] _contributorPPAllowances) public onlyOwner{
     require(_contributorAddresses.length == _contributorPPAllowances.length); // Check if input data is correct
 
     for(uint cnt = 0; cnt < _contributorAddresses.length; cnt++){
@@ -205,23 +210,31 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   }
 
   //
-  // Method is needed for recovering tokens accedentaly sent to token address
+  // Method is needed for recovering tokens accidentally sent to token address
   //
-  function salvageTokensFromContract(address _tokenAddress, address _to, uint _amount) onlyOwner{
+  function salvageTokensFromContract(address _tokenAddress, address _to, uint _amount) public onlyOwner{
     IERC20Token(_tokenAddress).transfer(_to, _amount);
   }
 
   //
   // withdrawEth when minimum cap is reached
+  // @owner sets contributions to withdraw
   //
-  function withdrawEth() onlyOwner{
+  function withdrawEth() onlyOwner public {
     require(this.balance != 0);
     require(ethRaised >= minCap);
 
     pendingEthWithdrawal = this.balance;
   }
-  uint pendingEthWithdrawal;
-  function pullBalance(){
+
+
+  uint public pendingEthWithdrawal;
+  //
+  // pulls the funds that were set to send with calling of
+  // withdrawEth when minimum cap is reached
+  // @multisig pulls the contributions to self
+  //
+  function pullBalance() public {
     require(msg.sender == multisigAddress);
     require(pendingEthWithdrawal > 0);
 
@@ -232,9 +245,9 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   //
   // Users can claim their contribution if min cap is not raised
   //
-  function claimEthIfFailed(){
-    require(block.number > crowdsaleEndedBlock && ethRaised < minCap);    // Check if crowdsale has failed
-    require(contributorList[msg.sender].contributionAmount > 0);          // Check if contributor has contributed to crowdsaleEndedBlock
+  function claimEthIfFailed() public {
+    require(block.timestamp > crowdsaleEndedTime && ethRaised < minCap);    // Check if crowdsale has failed
+    require(contributorList[msg.sender].contributionAmount > 0);          // Check if contributor has contributed to crowdsaleEndedTime
     require(!hasClaimedEthWhenFail[msg.sender]);                          // Check if contributor has already claimed his eth
 
     uint ethContributed = contributorList[msg.sender].contributionAmount; // Get contributors contribution
@@ -247,8 +260,8 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   //
   // Owner can batch return contributors contributions(eth)
   //
-  function batchReturnEthIfFailed(uint _numberOfReturns) onlyOwner{
-    require(block.number > crowdsaleEndedBlock && ethRaised < minCap);                // Check if crowdsale has failed
+  function batchReturnEthIfFailed(uint _numberOfReturns) public onlyOwner{
+    require(block.timestamp > crowdsaleEndedTime && ethRaised < minCap);                // Check if crowdsale has failed
     address currentParticipantAddress;
     uint contribution;
     for (uint cnt = 0; cnt < _numberOfReturns; cnt++){
@@ -266,11 +279,11 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   }
 
   //
-  // If there were any issue/attach with refund owner can withraw eth at the end for manual recovery
+  // If there were any issue/attach with refund owner can withdraw eth at the end for manual recovery
   //
-  function withdrawRemainingBalanceForManualRecovery() onlyOwner{
+  function withdrawRemainingBalanceForManualRecovery() public onlyOwner{
     require(this.balance != 0);                                  // Check if there are any eth to claim
-    require(block.number > crowdsaleEndedBlock);                 // Check if crowdsale is over
+    require(block.timestamp > crowdsaleEndedTime);                 // Check if crowdsale is over
     require(contributorIndexes[nextContributorToClaim] == 0x0);  // Check if all the users were refunded
     multisigAddress.transfer(this.balance);                      // Withdraw to multisig
   }
@@ -278,61 +291,44 @@ contract Crowdsale is ReentrnacyHandlingContract, Owned{
   //
   // Owner can set multisig address for crowdsale
   //
-  function setMultisigAddress(address _newAddress) onlyOwner{
+  function setMultisigAddress(address _newAddress) public onlyOwner{
     multisigAddress = _newAddress;
   }
 
   //
   // Owner can set token address where mints will happen
   //
-  function setToken(address _newAddress) onlyOwner{
+  function setToken(address _newAddress) public onlyOwner{
     token = IToken(_newAddress);
   }
 
   //
   // Owner can claim teams tokens when crowdsale has successfully ended
   //
-  function claimCoreTeamsTokens(address _to) onlyOwner{
+  function claimCoreTeamsTokens(address _to) public onlyOwner{
     require(crowdsaleState == state.crowdsaleEnded);              // Check if crowdsale has ended
-    require(!ownerHasClaimedTokens);                              // Check if owner has allready claimed tokens
+    require(!ownerHasClaimedTokens);                              // Check if owner has already claimed tokens
 
     uint devReward = maxTokenSupply - token.totalSupply();
-    if (!cofounditHasClaimedTokens) devReward -= cofounditReward; // If cofoundit has claimed tokens its ok if not set aside cofounditReward
+    if (!presaleBonusTokensClaimed) devReward -= presaleBonusTokens; // If presaleBonusToken has been claimed its ok if not set aside presaleBonusTokens
     token.mintTokens(_to, devReward);                             // Issue Teams tokens
     ownerHasClaimedTokens = true;                                 // Block further mints from this method
   }
 
   //
-  // Cofoundit can claim their tokens
+  // Presale bonus tokens
   //
-  function claimCofounditTokens(){
-    require(msg.sender == cofounditAddress);            // Check if sender is cofoundit
+  function claimPresaleTokens() public {
+    require(msg.sender == presaleBonusAddress);         // Check if sender is address to claim tokens
     require(crowdsaleState == state.crowdsaleEnded);    // Check if crowdsale has ended
-    require(!cofounditHasClaimedTokens);                // Check if cofoundit has allready claimed tokens
+    require(!presaleBonusTokensClaimed);                // Check if tokens were already claimed
 
-    token.mintTokens(cofounditColdStorage, cofounditReward);             // Issue cofoundit tokens
-    cofounditHasClaimedTokens = true;                   // Block further mints from this method
+    token.mintTokens(presaleBonusAddressColdStorage, presaleBonusTokens);             // Issue presale  tokens
+    presaleBonusTokensClaimed = true;                   // Block further mints from this method
   }
 
-  function getTokenAddress() constant returns(address){
+  function getTokenAddress() public constant returns(address){
     return address(token);
   }
 
-  //
-  //  Before crowdsale starts owner can calibrate blocks of crowdsale stages
-  //
-  function setCrowdsaleBlocks(uint _presaleStartBlock, uint _presaleUnlimitedStartBlock, uint _crowdsaleStartBlock, uint _crowdsaleEndedBlock) onlyOwner{
-    require(crowdsaleState == state.pendingStart);                // Check if crowdsale has started
-    require(_presaleStartBlock != 0);                             // Check if any value is 0
-    require(_presaleStartBlock < _presaleUnlimitedStartBlock);    // Check if presaleUnlimitedStartBlock is set properly
-    require(_presaleUnlimitedStartBlock != 0);                    // Check if any value is 0
-    require(_presaleUnlimitedStartBlock < _crowdsaleStartBlock);  // Check if crowdsaleStartBlock is set properly
-    require(_crowdsaleStartBlock != 0);                           // Check if any value is 0
-    require(_crowdsaleStartBlock < _crowdsaleEndedBlock);         // Check if crowdsaleEndedBlock is set properly
-    require(_crowdsaleEndedBlock != 0);                           // Check if any value is 0
-    presaleStartBlock = _presaleStartBlock;
-    presaleUnlimitedStartBlock = _presaleUnlimitedStartBlock;
-    crowdsaleStartBlock = _crowdsaleStartBlock;
-    crowdsaleEndedBlock = _crowdsaleEndedBlock;
-  }
 }
