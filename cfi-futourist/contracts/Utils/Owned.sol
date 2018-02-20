@@ -4,7 +4,7 @@ contract Owned {
     address public owner;
     address public newOwner;
 
-    function Owned() {
+    function Owned() public{
         owner = msg.sender;
     }
 
